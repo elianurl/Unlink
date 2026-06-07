@@ -1,0 +1,36 @@
+name: Sync Approved Directory
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'data/approved.json'
+
+jobs:
+  publish-approved:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Ensure data file exists
+        run: |
+          if [ ! -f data/approved.json ]; then
+            mkdir -p data
+            echo '[]' > data/approved.json
+          fi
+
+      - name: Commit approved.json changes (if any)
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add data/approved.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: sync approved directory"
+            git push
+          else
+            echo "No changes to commit"
+          fi
