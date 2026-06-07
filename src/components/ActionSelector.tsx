@@ -1,11 +1,12 @@
 import { ShieldAlert, FileText, Info } from "lucide-react";
+import type { FormData } from "../types";
 
 interface ActionSelectorProps {
   actionType: "modify" | "delete";
-  modifyField: string;
+  modifyField: FormData["modifyField"];
   modifyNewValue: string;
   onChangeAction: (action: "modify" | "delete") => void;
-  onChangeModifyField: (field: string) => void;
+  onChangeModifyField: (field: FormData["modifyField"]) => void;
   onChangeModifyValue: (value: string) => void;
 }
 

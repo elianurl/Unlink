@@ -4,7 +4,8 @@ import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { promises as fs } from "fs";
 
-dotenv.config();
+dotenv.config({ path: ".env.local" });
+dotenv.config({ path: ".env" });
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const extractEmailsFromText = (text: string): string[] => {

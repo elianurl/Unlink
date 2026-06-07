@@ -29,6 +29,20 @@ _Genera solicitudes legales de rectificación o supresión de datos personales e
 
 ---
 
+## Índice
+
+- [Qué es Unlink](#qué-es-unlink)
+- [Principios](#principios)
+- [Características](#características)
+- [Cómo funciona](#cómo-funciona)
+- [Stack](#stack)
+- [Arquitectura](#arquitectura)
+- [Local](#local)
+- [Producción](#producción)
+- [Moderación](#moderación)
+
+---
+
 ## Qué es Unlink
 
 Unlink es una herramienta de código abierto para ejercer tus **derechos ARCO** (Acceso, Rectificación, Cancelación y Oposición) ante cualquier entidad española.
@@ -54,6 +68,44 @@ Unlink es una herramienta de código abierto para ejercer tus **derechos ARCO** 
 | **Directorio colaborativo** | Emails aportados por la comunidad, moderados antes de publicarse. |
 | **Sin IA** | Sin modelos de lenguaje, sin tokens de API, sin costes ocultos. |
 | **Panel de moderación** | Revisa y aprueba sugerencias con un token seguro. |
+
+---
+
+## Cómo funciona
+
+La herramienta sigue un flujo guiado en tres pasos. La captura general muestra la vista principal de la app en formato vertical.
+
+<p align="center">
+  <img src="./docs/screenshots/screenshot.png" alt="Vista general de la herramienta Unlink" width="360" />
+</p>
+
+1. **Paso 1: Entidad de destino**
+   - El usuario selecciona la empresa o entidad sobre la que quiere ejercer el derecho de **supresión** o **rectificación**.
+   - Si elige una entidad del listado, la app intenta recuperar emails relacionados con protección de datos.
+   - Si no hay resultados automáticos, puede usar **Comprobar en Google** para abrir una búsqueda con `nombre de la entidad + protección de datos`.
+   - Cuando aparece un email sugerido, el usuario puede verificarlo con el enlace **comprobar** junto al correo, que abre una búsqueda en el navegador para confirmar que sigue vigente.
+
+<p align="center">
+  <img src="./docs/screenshots/screenshot1.png" alt="Paso 1: selección de entidad de destino" width="760" />
+</p>
+
+2. **Paso 2: Acción deseada**
+   - **Eliminar mis datos**: el usuario completa sus datos identificativos y de contacto para generar una solicitud de supresión.
+   - **Modificar mis datos**: además de los datos personales, se selecciona el campo a corregir en **Dato a modificar** y se introduce el valor correcto en **Dato corregido**.
+   - Si se selecciona **DNI/NIE** como campo a modificar, la interfaz recuerda que deberá adjuntarse documentación justificativa.
+
+<p align="center">
+  <img src="./docs/screenshots/screenshot2.png" alt="Paso 2: eliminar mis datos" width="760" />
+</p>
+
+<p align="center">
+  <img src="./docs/screenshots/screenshot3.png" alt="Paso 2: modificar mis datos" width="760" />
+</p>
+
+3. **Paso 3: Sus datos**
+   - Se completan los campos personales obligatorios: **Nombre completo**, **DNI/NIE**, **Email** y **Teléfono**.
+   - Cuando la información requerida está completa, se habilita el botón **Generar y Solicitar**.
+   - Al pulsarlo, la app abre el proveedor de correo del dispositivo con un borrador ya redactado y listo para enviar.
 
 ---
 
@@ -91,8 +143,9 @@ Backend (Express)
 ```bash
 npm install
 
-# Crea un .env con ADMIN_TOKEN
-echo "ADMIN_TOKEN=tu_token_seguro" > .env
+# Crea un `.env.local` con `ADMIN_TOKEN`
+cp .env.example .env.local
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 npm run dev
 ```
@@ -107,12 +160,21 @@ App en **http://localhost:3000** · Panel en **http://localhost:3000/admin**
 - Framework: `Other`
 - Build: `vite build`
 - Output: `dist`
-- Env: `VITE_API_BASE` → URL del backend
+- Env: define las variables del frontend que necesite la app
 
 **Backend (Render / Railway):**
 - Start: `node dist/server.cjs`
-- Env: `ADMIN_TOKEN`, `APP_URL`
+- Env: `ADMIN_TOKEN` (se inyecta automáticamente desde el panel de entorno)
 - **Importante:** Requiere persistencia de disco para `data/`.
+
+**Token admin**
+- Genera uno nuevo con `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+- Guárdalo en `.env.local` para desarrollo y en el panel de entorno de Vercel para producción
+- Si lo cambias, actualiza el valor local y el de producción al mismo tiempo
+
+**No subir secretos a GitHub**
+- `.env`, `.env.local` y variantes locales están ignoradas por Git
+- El archivo real debe quedar solo en tu máquina o en Vercel, nunca en el repo
 
 ---
 
