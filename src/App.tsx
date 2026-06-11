@@ -8,7 +8,11 @@ import ActionSelector from "./components/ActionSelector";
 import UserDataForm from "./components/UserDataForm";
 import Footer from "./components/Footer";
 import PrivacyModal from "./components/PrivacyModal";
+import ShareModal from "./components/ShareModal";
+import ShareFab from "./components/ShareFab";
 import { isValidDniNie } from "./utils/validators";
+
+const SHARE_PROMPT_SEEN_KEY = "unlink-share-prompted";
 
 export default function App() {
   const [formData, setFormData] = useState<FormData>({
@@ -27,6 +31,8 @@ export default function App() {
   const [foundEmails, setFoundEmails] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareCelebration, setShareCelebration] = useState(false);
   const [approvedCompanies, setApprovedCompanies] = useState<string[]>([]);
 
   useEffect(() => {
@@ -182,6 +188,20 @@ export default function App() {
     const body = encodeURIComponent(generateEmailTemplate());
     const to = encodeURIComponent(foundEmails.join(","));
     window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+
+    // Momento ideal para invitar a compartir: la app acaba de ayudar al usuario.
+    // Solo se muestra automáticamente la primera vez para no resultar intrusivo.
+    let alreadyPrompted = false;
+    try {
+      alreadyPrompted = !!localStorage.getItem(SHARE_PROMPT_SEEN_KEY);
+      if (!alreadyPrompted) localStorage.setItem(SHARE_PROMPT_SEEN_KEY, "1");
+    } catch {}
+    if (!alreadyPrompted) {
+      setTimeout(() => {
+        setShareCelebration(true);
+        setShowShareModal(true);
+      }, 1800);
+    }
   };
 
   const companyOptions = [
@@ -298,7 +318,17 @@ export default function App() {
 
       <Footer onOpenPrivacy={() => setShowPrivacyModal(true)} />
 
+      <ShareFab
+        onClick={() => {
+          setShareCelebration(false);
+          setShowShareModal(true);
+        }}
+      />
+
       {showPrivacyModal && <PrivacyModal onClose={() => setShowPrivacyModal(false)} />}
+      {showShareModal && (
+        <ShareModal celebration={shareCelebration} onClose={() => setShowShareModal(false)} />
+      )}
     </div>
   );
 }
