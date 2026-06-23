@@ -122,17 +122,41 @@ La herramienta sigue un flujo guiado en tres pasos. La captura general muestra l
 ```
 Frontend (React + Vite)
     |
-    +-- /api/dpo-email      → Búsqueda de emails DPO
+    +-- /api/dpo-email      → Búsqueda de emails DPO (rastreo con caché)
     +-- /api/approved       → Directorio público
-    +-- /api/empresas/stats → Estadísticas anónimas
-    +-- /admin              → Panel de moderación
+    +-- /api/track          → Registro anónimo de visitas
+    +-- /api/empresas/stats → Estadísticas anónimas de uso
+    +-- /api/admin/stats    → Métricas agregadas (token)
+    +-- /admin              → Panel de moderación y estadísticas
 
 Backend (Express)
     |
     +-- data/pending.json   → Sugerencias en revisión
     +-- data/approved.json  → Directorio aprobado
     +-- data/audit.log      → Auditoría de moderación
+    +-- data/stats.json     → Estadísticas de uso (runtime, no versionado)
 ```
+
+### Seguridad y resiliencia
+
+Para resistir abusos y picos de tráfico (DoS), el backend incluye, sin
+dependencias externas:
+
+- **Rate limiting por IP** con ventana deslizante: límite global de la API y
+  uno más estricto para la búsqueda DPO (que genera peticiones salientes).
+- **Caché de rastreos** y **tope de búsquedas concurrentes** para evitar la
+  amplificación de peticiones.
+- **Límite de tamaño del cuerpo** (16 kB) y **cabeceras de seguridad**
+  (`nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`).
+- **Protección anti-SSRF**: solo se rastrean dominios públicos, nunca hosts
+  internos ni IPs literales.
+
+### Estadísticas de uso
+
+Se registran de forma **anónima y agregada** (sin datos personales ni IPs):
+visitas, solicitudes generadas, tipo de acción (supresión/rectificación),
+búsquedas de email y un ranking de empresas. Visibles en `/admin` con el
+`ADMIN_TOKEN`.
 
 ---
 

@@ -12,7 +12,7 @@ interface ShareModalProps {
   celebration?: boolean;
 }
 
-const CONFETTI_COLORS = ["#a5b4fc", "#c4b5fd", "#f9a8d4", "#fcd34d", "#6ee7b7", "#ffffff"];
+const CONFETTI_COLORS = ["#72c1ee", "#36a6e2", "#1675bb", "#41b866", "#a8e6b8", "#ffffff"];
 
 function WhatsAppIcon() {
   return (
@@ -99,7 +99,7 @@ export default function ShareModal({ onClose, celebration = false }: ShareModalP
         transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
         className="bg-white max-w-md w-full rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
       >
-        <div className="relative bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-600 px-6 pt-10 pb-8 text-center overflow-hidden">
+        <div className="relative bg-gradient-to-br from-brand-600 via-brand-500 to-accent-600 px-6 pt-10 pb-8 text-center overflow-hidden">
           <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
             {confetti.map((c) => (
               <motion.span
@@ -133,7 +133,7 @@ export default function ShareModal({ onClose, celebration = false }: ShareModalP
           <h2 className="relative text-xl font-bold text-white">
             {celebration ? "¡Tu solicitud está en marcha!" : "Comparte Unlink"}
           </h2>
-          <p className="relative text-indigo-100 text-sm mt-2 leading-relaxed max-w-sm mx-auto">
+          <p className="relative text-brand-100 text-sm mt-2 leading-relaxed max-w-sm mx-auto">
             {celebration
               ? "Acabas de recuperar el control de tus datos. ¿Conoces a alguien que también debería hacerlo?"
               : "Ayuda a que más personas recuperen el control de sus datos personales."}
@@ -144,7 +144,7 @@ export default function ShareModal({ onClose, celebration = false }: ShareModalP
           {canNativeShare && (
             <button
               onClick={handleNativeShare}
-              className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-medium py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 active:scale-[0.98]"
+              className="w-full bg-gradient-to-r from-brand-600 to-accent-600 hover:from-brand-700 hover:to-accent-700 text-white font-medium py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-brand-600/25 flex items-center justify-center gap-2 active:scale-[0.98]"
             >
               <Share2 size={18} />
               Compartir con un toque

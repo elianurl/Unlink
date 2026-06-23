@@ -3,16 +3,10 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { promises as fs } from "fs";
+import { isValidEmail, extractEmailsFromText } from "./src/utils/email";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config({ path: ".env" });
-
-const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const extractEmailsFromText = (text: string): string[] => {
-  const re = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
-  const matches = text.match(re) || [];
-  return matches.filter(isValidEmail);
-};
 
 const normalizeName = (s: string) =>
   s
@@ -21,10 +15,35 @@ const normalizeName = (s: string) =>
     .toLowerCase()
     .trim();
 
+// Solo permitimos rastrear dominios p\u00fablicos con TLD alfab\u00e9tico. Esto evita
+// SSRF: que un nombre de empresa manipulado fuerce peticiones a localhost,
+// IPs literales o hosts de red interna (.local, .internal, metadata, etc.).
+function isPublicDomain(domain: string): boolean {
+  if (!domain || typeof domain !== "string") return false;
+  if (domain.length > 253 || /\s/.test(domain)) return false;
+  if (!/^[a-z0-9.-]+\.[a-z]{2,24}$/i.test(domain)) return false;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(domain)) return false; // IPv4 literal
+  if (domain.includes(":")) return false; // IPv6 / puerto
+  const lower = domain.toLowerCase();
+  if (
+    lower === "localhost" ||
+    lower.endsWith(".localhost") ||
+    lower.endsWith(".local") ||
+    lower.endsWith(".internal") ||
+    lower.endsWith(".lan") ||
+    lower.endsWith(".home") ||
+    lower.endsWith(".corp")
+  ) {
+    return false;
+  }
+  return true;
+}
+
 const dataDir = path.join(process.cwd(), "data");
 const PENDING_PATH = path.join(dataDir, "pending.json");
 const APPROVED_PATH = path.join(dataDir, "approved.json");
 const AUDIT_PATH = path.join(dataDir, "audit.log");
+const STATS_PATH = path.join(dataDir, "stats.json");
 
 async function ensureDataStore() {
   try {
@@ -44,7 +63,56 @@ async function ensureDataStore() {
     } catch {
       await fs.writeFile(AUDIT_PATH, "", "utf-8");
     }
+    try {
+      await fs.access(STATS_PATH);
+    } catch {
+      await fs.writeFile(STATS_PATH, JSON.stringify(emptyStats(), null, 2), "utf-8");
+    }
   } catch {}
+}
+
+// ---------------------------------------------------------------------------
+// Estadísticas de uso (anónimas, agregadas, sin datos personales ni IPs)
+// ---------------------------------------------------------------------------
+type UsageStats = {
+  totals: { pageViews: number; generations: number; emailSearches: number };
+  actions: { delete: number; modify: number };
+  companies: Record<string, number>;
+  daily: Record<string, { views: number; generations: number }>;
+  startedAt: string;
+  updatedAt: string;
+};
+
+function emptyStats(): UsageStats {
+  const now = new Date().toISOString();
+  return {
+    totals: { pageViews: 0, generations: 0, emailSearches: 0 },
+    actions: { delete: 0, modify: 0 },
+    companies: {},
+    daily: {},
+    startedAt: now,
+    updatedAt: now,
+  };
+}
+
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+async function loadStats(): Promise<UsageStats> {
+  try {
+    const raw = await fs.readFile(STATS_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    const base = emptyStats();
+    return {
+      totals: { ...base.totals, ...(parsed?.totals || {}) },
+      actions: { ...base.actions, ...(parsed?.actions || {}) },
+      companies: parsed?.companies && typeof parsed.companies === "object" ? parsed.companies : {},
+      daily: parsed?.daily && typeof parsed.daily === "object" ? parsed.daily : {},
+      startedAt: parsed?.startedAt || base.startedAt,
+      updatedAt: parsed?.updatedAt || base.updatedAt,
+    };
+  } catch {
+    return emptyStats();
+  }
 }
 
 async function readJsonArray(filePath: string): Promise<any[]> {
@@ -59,6 +127,10 @@ async function readJsonArray(filePath: string): Promise<any[]> {
 
 async function writeJsonArray(filePath: string, arr: any[]): Promise<void> {
   await fs.writeFile(filePath, JSON.stringify(arr, null, 2), "utf-8");
+}
+
+async function writeJsonRaw(filePath: string, value: unknown): Promise<void> {
+  await fs.writeFile(filePath, JSON.stringify(value, null, 2), "utf-8");
 }
 
 async function appendAudit(event: string, payload: any) {
@@ -122,7 +194,9 @@ async function googleSearchEmails(companyName: string): Promise<string[]> {
   const base = toSlugDomain(companyName);
   const guessed = tlds.map((t) => `${base}.${t}`);
   const mapped = KNOWN_DOMAINS[nameKey] || [];
-  const domainCandidates = Array.from(new Set([...mapped, ...guessed])).filter(Boolean);
+  const domainCandidates = Array.from(new Set([...mapped, ...guessed]))
+    .filter(Boolean)
+    .filter(isPublicDomain);
 
   const paths = [
     "/proteccion-de-datos",
@@ -237,10 +311,81 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  // Detrás de un proxy (Render, Railway, Vercel) para que req.ip sea fiable.
+  app.set("trust proxy", 1);
+  app.disable("x-powered-by");
 
-  const companyStats = new Map<string, number>();
-  const newCompanyEntries: Array<{ name: string; emails: string[] }> = [];
+  // Límite de tamaño del cuerpo: estos endpoints solo reciben JSON pequeño.
+  // Bloquea payloads gigantes pensados para agotar memoria/CPU.
+  app.use(express.json({ limit: "16kb" }));
+
+  // Cabeceras de seguridad básicas (sin dependencias externas).
+  app.use((_req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("X-DNS-Prefetch-Control", "off");
+    res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    next();
+  });
+
+  const clientIp = (req: express.Request): string =>
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+    req.ip ||
+    req.socket?.remoteAddress ||
+    "unknown";
+
+  // Fábrica de limitadores de tasa por IP con ventana deslizante en memoria.
+  // Cada limitador limpia entradas caducas periódicamente y acota el tamaño
+  // del mapa para que un atacante no pueda agotar memoria con muchas IPs.
+  function createRateLimiter(opts: { windowMs: number; max: number; message?: string }) {
+    const { windowMs, max } = opts;
+    const message = opts.message || "Demasiadas solicitudes. Inténtelo más tarde.";
+    const store = new Map<string, number[]>();
+
+    const cleanup = setInterval(() => {
+      const now = Date.now();
+      for (const [ip, arr] of store) {
+        const recent = arr.filter((t) => now - t < windowMs);
+        if (recent.length === 0) store.delete(ip);
+        else store.set(ip, recent);
+      }
+    }, windowMs);
+    cleanup.unref?.();
+
+    const middleware: express.RequestHandler = (req, res, next) => {
+      try {
+        const ip = clientIp(req);
+        const now = Date.now();
+        const recent = (store.get(ip) || []).filter((t) => now - t < windowMs);
+        if (recent.length >= max) {
+          res.setHeader("Retry-After", String(Math.ceil(windowMs / 1000)));
+          return res.status(429).json({ error: message });
+        }
+        recent.push(now);
+        store.set(ip, recent);
+        // Salvaguarda anti-saturación de memoria: si el mapa crece demasiado,
+        // se purga por completo (el peor caso es reiniciar las ventanas).
+        if (store.size > 20000) store.clear();
+      } catch {}
+      next();
+    };
+    return middleware;
+  }
+
+  // Límite global a toda la API para amortiguar avalanchas de peticiones (DoS).
+  const apiLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 120 });
+  // El registro de eventos/estadísticas es barato pero frecuente.
+  const trackLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 60 });
+  // La búsqueda DPO dispara peticiones salientes: límite estricto por IP.
+  const crawlLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 15,
+    message: "Demasiadas búsquedas seguidas. Espere un momento antes de reintentar.",
+  });
+
+  app.use("/api/", apiLimiter);
 
   // Admin auth middleware
   const adminAuth: express.RequestHandler = (req, res, next) => {
@@ -250,41 +395,65 @@ async function startServer() {
     return res.status(401).json({ error: "Unauthorized" });
   };
 
-  // Very simple rate limiter for stats endpoint (per IP)
-  const rlWindowMs = 10 * 60 * 1000; // 10 minutes
-  const rlMax = 30; // max requests per window
-  const rlStore = new Map<string, number[]>();
-  const statsRateLimit: express.RequestHandler = (req, res, next) => {
-    try {
-      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
-      const now = Date.now();
-      const arr = rlStore.get(ip) || [];
-      const recent = arr.filter((t) => now - t < rlWindowMs);
-      if (recent.length >= rlMax) {
-        return res.status(429).json({ error: "Demasiadas solicitudes. Inténtelo más tarde." });
-      }
-      recent.push(now);
-      rlStore.set(ip, recent);
-    } catch {}
-    next();
+  // Estadísticas en memoria, persistidas a disco con escritura diferida para
+  // no castigar el disco en cada petición.
+  const stats = await loadStats();
+  let statsDirty = false;
+  const markStats = () => {
+    stats.updatedAt = new Date().toISOString();
+    statsDirty = true;
   };
+  const flush = setInterval(() => {
+    if (!statsDirty) return;
+    statsDirty = false;
+    writeJsonRaw(STATS_PATH, stats).catch(() => {});
+  }, 5000);
+  flush.unref?.();
 
-  app.post("/api/empresas/stats", statsRateLimit, (req, res) => {
+  // Registro de eventos de uso anónimos (visitas y generaciones).
+  app.post("/api/track", trackLimiter, (req, res) => {
+    const event = String(req.body?.event || "");
+    const day = todayKey();
+    if (!stats.daily[day]) stats.daily[day] = { views: 0, generations: 0 };
+
+    if (event === "pageview") {
+      stats.totals.pageViews += 1;
+      stats.daily[day].views += 1;
+      markStats();
+    } else if (event === "generation") {
+      stats.totals.generations += 1;
+      stats.daily[day].generations += 1;
+      const action = req.body?.actionType === "modify" ? "modify" : "delete";
+      stats.actions[action] += 1;
+      markStats();
+    }
+    res.status(204).end();
+  });
+
+  app.post("/api/empresas/stats", trackLimiter, (req, res) => {
     const { company, customCompany, newEmails } = req.body;
     const suggestedEmails = Array.isArray(req.body?.suggestedEmails)
       ? req.body.suggestedEmails.filter(isValidEmail)
       : [];
 
+    // Contabiliza la generación y la acción elegida para las estadísticas.
+    const day = todayKey();
+    if (!stats.daily[day]) stats.daily[day] = { views: 0, generations: 0 };
+    stats.totals.generations += 1;
+    stats.daily[day].generations += 1;
+    const action = req.body?.actionType === "modify" ? "modify" : "delete";
+    stats.actions[action] += 1;
+
     if (company === "Otro (especificar)" && customCompany) {
+      const label = String(customCompany).slice(0, 120);
+      stats.companies[label] = (stats.companies[label] || 0) + 1;
       const validEmails = Array.isArray(newEmails) ? newEmails.filter(isValidEmail) : [];
       if (validEmails.length > 0) {
-        newCompanyEntries.push({ name: customCompany, emails: validEmails });
-        console.log(`[Stats] New manual company added: ${customCompany} with emails:`, validEmails);
         (async () => {
           const pending = await readJsonArray(PENDING_PATH);
           pending.push({
             id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-            name: customCompany,
+            name: label,
             emails: validEmails,
             createdAt: new Date().toISOString(),
             source: "manual",
@@ -293,16 +462,15 @@ async function startServer() {
         })().catch(() => {});
       }
     } else if (company) {
-      const count = companyStats.get(company) || 0;
-      companyStats.set(company, count + 1);
-      console.log(`[Stats] Company selected: ${company} (Total selections: ${count + 1})`);
+      const label = String(company).slice(0, 120);
+      stats.companies[label] = (stats.companies[label] || 0) + 1;
 
       if (suggestedEmails.length > 0) {
         (async () => {
           const pending = await readJsonArray(PENDING_PATH);
           pending.push({
             id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-            name: company,
+            name: label,
             emails: suggestedEmails,
             createdAt: new Date().toISOString(),
             source: "suggestion",
@@ -312,7 +480,28 @@ async function startServer() {
       }
     }
 
+    markStats();
     res.status(200).json({ status: "ok" });
+  });
+
+  // Estadísticas agregadas para el panel de administración.
+  app.get("/api/admin/stats", adminAuth, (_req, res) => {
+    const topCompanies = Object.entries(stats.companies)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 25)
+      .map(([name, count]) => ({ name, count }));
+    const recentDays = Object.entries(stats.daily)
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+      .slice(0, 30)
+      .map(([date, v]) => ({ date, ...v }));
+    res.json({
+      totals: stats.totals,
+      actions: stats.actions,
+      topCompanies,
+      recentDays,
+      startedAt: stats.startedAt,
+      updatedAt: stats.updatedAt,
+    });
   });
 
   // API route to search for DPO emails
@@ -331,11 +520,23 @@ async function startServer() {
     "Wizink": ["mb.esp.protecciondedatos@wizink.es"],
   };
 
-  app.post("/api/dpo-email", async (req, res) => {
-    const { companyName } = req.body;
+  // Caché de rastreos para no repetir peticiones salientes caras por la misma
+  // empresa (reduce coste y mitiga abuso por amplificación).
+  const crawlCache = new Map<string, { emails: string[]; at: number }>();
+  const CRAWL_TTL_MS = 6 * 60 * 60 * 1000; // 6 horas
+  // Tope de rastreos simultáneos: protege al servidor de quedarse sin recursos
+  // si llegan muchas búsquedas nuevas a la vez.
+  let activeCrawls = 0;
+  const MAX_CONCURRENT_CRAWLS = 4;
+
+  app.post("/api/dpo-email", crawlLimiter, async (req, res) => {
+    const companyName = typeof req.body?.companyName === "string" ? req.body.companyName.trim() : "";
     try {
       if (!companyName) {
         return res.status(400).json({ error: "Company name is required." });
+      }
+      if (companyName.length > 120) {
+        return res.status(400).json({ error: "Nombre de empresa demasiado largo." });
       }
 
       const key = normalizeName(companyName);
@@ -361,11 +562,36 @@ async function startServer() {
         return res.json({ emails: Array.from(result) });
       }
 
-      // 4. Only crawl if we have nothing yet
-      const crawled = await googleSearchEmails(companyName);
+      // 4. Resultado de rastreo cacheado, si está vigente.
+      const cached = crawlCache.get(key);
+      if (cached && Date.now() - cached.at < CRAWL_TTL_MS) {
+        return res.json({ emails: cached.emails });
+      }
+
+      // 5. Solo rastreamos si hay capacidad; si no, pedimos reintento.
+      if (activeCrawls >= MAX_CONCURRENT_CRAWLS) {
+        return res.status(503).json({
+          error: "El buscador está ocupado en este momento. Inténtelo de nuevo en unos segundos o introduzca el correo manualmente.",
+        });
+      }
+
+      stats.totals.emailSearches += 1;
+      markStats();
+
+      activeCrawls += 1;
+      let crawled: string[];
+      try {
+        crawled = await googleSearchEmails(companyName);
+      } finally {
+        activeCrawls -= 1;
+      }
       for (const e of crawled) if (isValidEmail(e)) result.add(e.toLowerCase());
 
-      res.json({ emails: Array.from(result) });
+      const emails = Array.from(result);
+      crawlCache.set(key, { emails, at: Date.now() });
+      if (crawlCache.size > 5000) crawlCache.clear();
+
+      res.json({ emails });
     } catch (error: any) {
       const errorString = error?.toString() || JSON.stringify(error) || "";
       const isRateLimit = error?.status === 429 || errorString.includes("429") || errorString.includes("Too Many Requests");
@@ -462,26 +688,73 @@ async function startServer() {
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;max-width:900px;margin:40px auto;padding:0 16px;color:#0f172a}
     .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
     .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    button{background:#111827;color:#fff;border:0;border-radius:8px;padding:8px 12px;cursor:pointer}
+    button{background:#1675bb;color:#fff;border:0;border-radius:8px;padding:8px 12px;cursor:pointer}
     button.secondary{background:#f3f4f6;color:#111827}
     input,textarea{border:1px solid #e2e8f0;border-radius:8px;padding:8px}
     code{background:#f8fafc;padding:2px 6px;border-radius:6px}
-    .badge{display:inline-block;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:9999px;padding:2px 8px;font-size:12px;margin-right:6px}
+    .badge{display:inline-block;background:#edf7fd;color:#155f99;border:1px solid #a8d9f6;border-radius:9999px;padding:2px 8px;font-size:12px;margin-right:6px}
+    h1{color:#163f63}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+    .metric{background:#edf7fd;border:1px solid #a8d9f6;border-radius:12px;padding:14px}
+    .metric .num{font-size:26px;font-weight:700;color:#1675bb}
+    .metric .lbl{font-size:12px;color:#475569;margin-top:2px}
+    .barrow{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:13px}
+    .bar{height:8px;border-radius:9999px;background:#1675bb;min-width:4px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    td,th{text-align:left;padding:4px 6px;border-bottom:1px solid #f1f5f9}
   </style>
   </head>
   <body>
-    <h1>Panel de Revisión de Sugerencias</h1>
+    <h1>Panel de Administración Unlink</h1>
     <div class="card">
       <div class="row">
         <label>Token admin:</label>
         <input id="token" type="password" placeholder="ADMIN_TOKEN" />
         <button id="load">Cargar pendientes</button>
+        <button id="loadStats" class="secondary">Ver estadísticas</button>
       </div>
     </div>
 
+    <div id="stats"></div>
     <div id="list"></div>
 
     <script>
+    const elStats = document.getElementById('stats');
+    const fmt = function(n){ return (n||0).toLocaleString('es-ES'); };
+    function metric(num, lbl){ return '<div class="metric"><div class="num">' + fmt(num) + '</div><div class="lbl">' + lbl + '</div></div>'; }
+    document.getElementById('loadStats').onclick = async () => {
+      const token = document.getElementById('token').value.trim();
+      if (!token) return alert('Introduzca el token');
+      const r = await fetch('/api/admin/stats', { headers: { 'x-admin-token': token } });
+      if (!r.ok) return alert('Error al cargar estadísticas');
+      const s = await r.json();
+      const top = Array.isArray(s.topCompanies) ? s.topCompanies : [];
+      const maxC = top.reduce(function(m,c){ return Math.max(m, c.count); }, 1);
+      const days = Array.isArray(s.recentDays) ? s.recentDays : [];
+      elStats.innerHTML =
+        '<div class="card">' +
+          '<h2 style="margin-top:0">Estadísticas de uso</h2>' +
+          '<div class="grid">' +
+            metric(s.totals && s.totals.pageViews, 'Visitas') +
+            metric(s.totals && s.totals.generations, 'Solicitudes generadas') +
+            metric(s.totals && s.totals.emailSearches, 'Búsquedas de email') +
+            metric(s.actions && s.actions.delete, 'Supresiones') +
+            metric(s.actions && s.actions.modify, 'Rectificaciones') +
+          '</div>' +
+          '<h3>Empresas más solicitadas</h3>' +
+          (top.length ? top.map(function(c){
+            var w = Math.round((c.count / maxC) * 220) + 4;
+            return '<div class="barrow"><span style="width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + c.name + '</span>' +
+                   '<span class="bar" style="width:' + w + 'px"></span><strong>' + c.count + '</strong></div>';
+          }).join('') : '<p style="color:#64748b">Sin datos todavía.</p>') +
+          '<h3>Actividad reciente</h3>' +
+          (days.length ? '<table><tr><th>Día</th><th>Visitas</th><th>Solicitudes</th></tr>' +
+            days.map(function(d){ return '<tr><td>' + d.date + '</td><td>' + fmt(d.views) + '</td><td>' + fmt(d.generations) + '</td></tr>'; }).join('') + '</table>'
+            : '<p style="color:#64748b">Sin actividad registrada.</p>') +
+          '<p style="font-size:12px;color:#94a3b8;margin-bottom:0">Actualizado: ' + (s.updatedAt || '-') + '</p>' +
+        '</div>';
+    };
+
     const elList = document.getElementById('list');
     document.getElementById('load').onclick = async () => {
       const token = document.getElementById('token').value.trim();

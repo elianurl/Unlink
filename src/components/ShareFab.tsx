@@ -17,12 +17,12 @@ export default function ShareFab({ onClick }: ShareFabProps) {
         aria-hidden="true"
         animate={{ scale: [1, 1.35, 1], opacity: [0.35, 0, 0.35] }}
         transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute inset-0 rounded-full bg-indigo-500"
+        className="absolute inset-0 rounded-full bg-brand-500"
       />
       <button
         onClick={onClick}
         aria-label="Compartir Unlink"
-        className="group relative flex items-center gap-0 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-full p-3.5 shadow-lg shadow-indigo-500/30 transition-all active:scale-95"
+        className="group relative flex items-center gap-0 bg-gradient-to-r from-brand-600 to-accent-600 hover:from-brand-700 hover:to-accent-700 text-white rounded-full p-3.5 shadow-lg shadow-brand-600/30 transition-all active:scale-95"
       >
         <Share2 size={20} className="shrink-0" />
         <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300 group-hover:max-w-[7rem] group-hover:pl-2">

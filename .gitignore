@@ -7,3 +7,6 @@ coverage/
 .env
 .env.local
 .env.*.local
+
+# Estadísticas de uso generadas en tiempo de ejecución
+data/stats.json

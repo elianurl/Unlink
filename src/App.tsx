@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FormData, COMMON_COMPANIES } from "./types";
-import { ShieldAlert, Info, Mail } from "lucide-react";
+import { Info, Mail } from "lucide-react";
 import { motion } from "motion/react";
 import CompanySelector from "./components/CompanySelector";
 import EmailManager from "./components/EmailManager";
@@ -45,6 +45,14 @@ export default function App() {
         }
       })
       .catch(() => {});
+
+    // Registro anónimo de visita para las estadísticas de uso (sin datos
+    // personales). Fire-and-forget: nunca debe afectar a la experiencia.
+    fetch("/api/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event: "pageview" }),
+    }).catch(() => {});
   }, []);
 
   const companyEmailMap: Record<string, string[]> = {
@@ -181,6 +189,7 @@ export default function App() {
         customCompany: formData.company === "Otro (especificar)" ? formData.customCompany : "",
         newEmails: formData.company === "Otro (especificar)" ? foundEmails : [],
         suggestedEmails: foundEmails,
+        actionType: formData.actionType,
       }),
     }).catch(() => {});
 
@@ -220,9 +229,13 @@ export default function App() {
           transition={{ duration: 0.5 }}
           className="mb-12 text-center"
         >
-          <div className="inline-flex items-center justify-center p-3 bg-indigo-100 text-indigo-700 rounded-full mb-4">
-            <ShieldAlert size={28} />
-          </div>
+          <img
+            src="/logo.png"
+            alt="Unlink"
+            width={500}
+            height={170}
+            className="h-16 sm:h-20 w-auto mx-auto mb-6"
+          />
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mb-4">
             Ejerce tu derecho a la Protección de Datos
           </h1>
@@ -300,7 +313,7 @@ export default function App() {
               <button
                 onClick={handleGenerate}
                 disabled={isSearching || !formData.fullName || !formData.dni || !formData.contactEmail}
-                className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-lg font-medium py-4 px-6 rounded-xl transition-all shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-brand-600 to-accent-600 hover:from-brand-700 hover:to-accent-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-lg font-medium py-4 px-6 rounded-xl transition-all shadow-lg shadow-brand-600/25 flex items-center justify-center gap-2"
               >
                 <Mail size={20} />
                 Generar y Solicitar

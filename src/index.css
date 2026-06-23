@@ -3,4 +3,51 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /*
+   * Paleta de marca Unlink, extraída del logo:
+   *  - Azul (texto "Unlink" y mitad derecha del escudo): primario.
+   *  - Verde (mitad izquierda del escudo): acento.
+   *
+   * El escalado `indigo` se redefine al azul de marca para que todos los
+   * componentes existentes (que usan utilidades `indigo-*`) adopten la
+   * identidad visual sin reescribir cada clase. Para código nuevo usa las
+   * escalas semánticas `brand-*` (azul) y `accent-*` (verde).
+   */
+  --color-brand-50: #edf7fd;
+  --color-brand-100: #d2ecfb;
+  --color-brand-200: #a8d9f6;
+  --color-brand-300: #72c1ee;
+  --color-brand-400: #36a6e2;
+  --color-brand-500: #1b8fd1;
+  --color-brand-600: #1675bb;
+  --color-brand-700: #155f99;
+  --color-brand-800: #164f7c;
+  --color-brand-900: #163f63;
+  --color-brand-950: #0e2840;
+
+  --color-accent-50: #edfaf0;
+  --color-accent-100: #d2f4da;
+  --color-accent-200: #a8e6b8;
+  --color-accent-300: #72d28e;
+  --color-accent-400: #41b866;
+  --color-accent-500: #25a04c;
+  --color-accent-600: #1a8240;
+  --color-accent-700: #176835;
+  --color-accent-800: #16522c;
+  --color-accent-900: #134325;
+  --color-accent-950: #062e16;
+
+  /* Mapea el azul de marca sobre el escalado `indigo` heredado. */
+  --color-indigo-50: #edf7fd;
+  --color-indigo-100: #d2ecfb;
+  --color-indigo-200: #a8d9f6;
+  --color-indigo-300: #72c1ee;
+  --color-indigo-400: #36a6e2;
+  --color-indigo-500: #1b8fd1;
+  --color-indigo-600: #1675bb;
+  --color-indigo-700: #155f99;
+  --color-indigo-800: #164f7c;
+  --color-indigo-900: #163f63;
+  --color-indigo-950: #0e2840;
 }

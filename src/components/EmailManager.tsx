@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Loader2, Mail, X } from "lucide-react";
+import { isValidEmail, normalizeEmail } from "../utils/email";
 
 interface EmailManagerProps {
   companyName: string;
@@ -18,12 +19,10 @@ export default function EmailManager({
 }: EmailManagerProps) {
   const [inputValue, setInputValue] = useState("");
 
-  const isValidEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
-
   const addEmail = (val: string) => {
-    const trimmed = val.trim();
-    if (trimmed && isValidEmail(trimmed) && !emails.includes(trimmed)) {
-      onChangeEmails([...emails, trimmed]);
+    const normalized = normalizeEmail(val);
+    if (normalized && isValidEmail(normalized) && !emails.includes(normalized)) {
+      onChangeEmails([...emails, normalized]);
       onClearError();
       return true;
     }
