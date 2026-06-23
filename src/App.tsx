@@ -222,24 +222,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      <main className="max-w-2xl mx-auto px-4 py-12 sm:py-24">
+      <main className="max-w-2xl mx-auto px-4 pt-8 pb-28 sm:pt-16 sm:pb-16">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mb-12 text-center"
+          className="mb-8 sm:mb-12 text-center"
         >
           <img
             src="/logo.png"
             alt="Unlink"
             width={500}
             height={170}
-            className="h-16 sm:h-20 w-auto mx-auto mb-6"
+            className="h-12 sm:h-20 w-auto mx-auto mb-5 sm:mb-6"
           />
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mb-4">
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-slate-900 mb-3">
             Ejerce tu derecho a la Protección de Datos
           </h1>
-          <p className="text-slate-600 max-w-lg mx-auto text-lg leading-relaxed">
+          <p className="text-slate-600 max-w-lg mx-auto text-sm sm:text-lg leading-relaxed px-2">
             Genera de forma rápida y sencilla una solicitud legal para ejercer tu derecho a la rectificación o supresión de tus datos ante cualquier entidad.
           </p>
         </motion.div>
@@ -250,7 +250,7 @@ export default function App() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="bg-white shadow-xl shadow-slate-200/50 rounded-2xl border border-slate-100 overflow-hidden"
         >
-          <div className="p-6 sm:p-8 space-y-8">
+          <div className="p-5 sm:p-8 space-y-6 sm:space-y-8">
             <CompanySelector
               company={formData.company}
               customCompany={formData.customCompany}
@@ -299,29 +299,28 @@ export default function App() {
               </div>
             )}
 
-            <div className="pt-4 pb-2">
-              <div className="bg-indigo-50/50 p-4 rounded-xl mb-6 flex items-start gap-3 border border-indigo-100">
+            <div className="pt-2 pb-2">
+              <div className="bg-indigo-50/50 p-4 rounded-xl mb-5 flex items-start gap-3 border border-indigo-100">
                 <Info className="text-indigo-600 mt-0.5 shrink-0" size={18} />
                 <p className="text-sm text-indigo-900 leading-relaxed">
                   <strong className="block font-semibold mb-1">¿Cómo funciona?</strong>
-                  Al hacer click en Generar y Solicitar, su app o proveedor de correo electrónico se abrirá automáticamente con un borrador de email completamente legal, pendiente de enviarse y adjuntando los datos correspondientes a la solicitud.
-                  <br /><br />
-                  Procure enviar el correo desde el mismo que introdujo anteriormente para mayor aceptación legal.
+                  Al pulsar <em>Generar y Solicitar</em>, su app de correo se abrirá con un borrador legal listo para enviar.
+                  <span className="hidden sm:inline"> Procure enviarlo desde la misma dirección que introdujo para mayor aceptación legal.</span>
                 </p>
               </div>
 
               <button
                 onClick={handleGenerate}
                 disabled={isSearching || !formData.fullName || !formData.dni || !formData.contactEmail}
-                className="w-full bg-gradient-to-r from-brand-600 to-accent-600 hover:from-brand-700 hover:to-accent-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-lg font-medium py-4 px-6 rounded-xl transition-all shadow-lg shadow-brand-600/25 flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-brand-600 to-accent-600 hover:from-brand-700 hover:to-accent-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white text-base sm:text-lg font-semibold py-4 px-6 rounded-xl transition-all shadow-lg shadow-brand-600/25 flex items-center justify-center gap-2"
               >
                 <Mail size={20} />
                 Generar y Solicitar
               </button>
-              <p className="text-center text-xs text-slate-500 mt-4 leading-relaxed font-medium px-4">
-                Tus datos personales se procesan localmente en su dispositivo y nunca se envían a nuestros servidores. Solo registramos de forma anónima la empresa seleccionada y sus datos para mejorar nuestro directorio. Al generar el correo, aceptas nuestros{" "}
+              <p className="text-center text-xs text-slate-500 mt-4 leading-relaxed font-medium px-2">
+                Tus datos se procesan localmente y nunca se envían a nuestros servidores.{" "}
                 <button type="button" onClick={() => setShowPrivacyModal(true)} className="underline hover:text-slate-700 transition-colors">
-                  Términos de Privacidad
+                  Aviso Legal y Privacidad
                 </button>.
               </p>
             </div>

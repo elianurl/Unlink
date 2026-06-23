@@ -11,7 +11,8 @@ export default function ShareFab({ onClick }: ShareFabProps) {
       initial={{ opacity: 0, scale: 0, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ type: "spring", delay: 1.2, bounce: 0.4 }}
-      className="fixed bottom-5 right-5 z-40"
+      className="fixed bottom-6 right-4 sm:bottom-8 sm:right-6 z-40"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <motion.span
         aria-hidden="true"

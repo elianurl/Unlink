@@ -28,31 +28,31 @@ export default function ActionSelector({
 }: ActionSelectorProps) {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Paso 2: Acción deseada</h2>
-      <div className="grid grid-cols-2 gap-4">
+      <h2 className="text-lg sm:text-xl font-semibold">Paso 2: Acción deseada</h2>
+      <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
           onClick={() => onChangeAction("delete")}
-          className={`p-4 rounded-xl border flex flex-col items-center gap-2 text-sm font-medium transition-all ${
+          className={`p-3 sm:p-4 rounded-xl border flex flex-col items-center gap-2 text-sm font-medium transition-all min-h-[4.5rem] active:scale-[0.97] ${
             actionType === "delete"
               ? "border-indigo-500 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-500 ring-offset-1"
               : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
           }`}
         >
-          <ShieldAlert size={20} />
-          Eliminar mis datos
+          <ShieldAlert size={20} className="shrink-0" />
+          <span className="text-center leading-tight">Eliminar mis datos</span>
         </button>
         <button
           type="button"
           onClick={() => onChangeAction("modify")}
-          className={`p-4 rounded-xl border flex flex-col items-center gap-2 text-sm font-medium transition-all ${
+          className={`p-3 sm:p-4 rounded-xl border flex flex-col items-center gap-2 text-sm font-medium transition-all min-h-[4.5rem] active:scale-[0.97] ${
             actionType === "modify"
               ? "border-indigo-500 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-500 ring-offset-1"
               : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
           }`}
         >
-          <FileText size={20} />
-          Modificar mis datos
+          <FileText size={20} className="shrink-0" />
+          <span className="text-center leading-tight">Modificar mis datos</span>
         </button>
       </div>
 
@@ -65,7 +65,8 @@ export default function ActionSelector({
             <select
               value={modifyField}
               onChange={(e) => onChangeModifyField(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-base focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none cursor-pointer"
+              style={{ fontSize: "16px" }}
             >
               {MODIFY_FIELDS.map((f) => (
                 <option key={f} value={f}>
@@ -84,17 +85,17 @@ export default function ActionSelector({
               value={modifyNewValue}
               onChange={(e) => onChangeModifyValue(e.target.value)}
               placeholder="Introduzca el dato correcto"
-              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+              autoComplete="off"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-base placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+              style={{ fontSize: "16px" }}
             />
           </div>
 
           {modifyField === "DNI/NIE" && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg text-sm flex gap-2 items-start mt-2">
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg text-sm flex gap-2 items-start">
               <Info size={16} className="shrink-0 mt-0.5" />
               <p>
-                Recuerde que tras generar la solicitud, deberá adjuntar
-                (manualmente) una copia por ambas caras del documento antiguo y
-                nuevo.
+                Recuerde adjuntar copia por ambas caras del documento antiguo y nuevo al enviar el correo.
               </p>
             </div>
           )}

@@ -51,3 +51,47 @@
   --color-indigo-900: #163f63;
   --color-indigo-950: #0e2840;
 }
+
+/*
+ * CORRECCIÓN ANTI-ZOOM EN IOS (Safari)
+ * ------------------------------------
+ * iOS Safari hace zoom automático cuando un <input>, <select> o <textarea>
+ * recibe foco y su font-size es menor a 16px. Forzamos 16px en todos los
+ * campos de formulario para eliminar ese comportamiento sin necesidad de
+ * deshabilitar el zoom a nivel de viewport (aunque también lo hacemos en el
+ * meta por petición explícita). En desktop el tamaño visual no cambia porque
+ * usamos rem y la base del documento es 16px igualmente.
+ */
+input,
+select,
+textarea,
+button {
+  font-size: 16px;
+}
+
+/*
+ * Reduce el retardo de 300 ms en tap que tienen algunos navegadores móviles
+ * cuando no hay doble-tap habilitado (ya lo gestiona el viewport, pero esto
+ * es una segunda capa más específica por elemento).
+ */
+a,
+button,
+[role="button"],
+input,
+select,
+textarea,
+label {
+  touch-action: manipulation;
+}
+
+/* Elimina el brillo azul al pulsar en Android WebView / Chrome móvil. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Scroll suave a nivel de documento. */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}

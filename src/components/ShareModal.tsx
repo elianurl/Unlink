@@ -88,17 +88,21 @@ export default function ShareModal({ onClose, celebration = false }: ShareModalP
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-        className="bg-white max-w-md w-full rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
+        className="bg-white w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl border border-slate-100"
       >
+        {/* Pill handle solo en móvil */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/40" />
+        </div>
         <div className="relative bg-gradient-to-br from-brand-600 via-brand-500 to-accent-600 px-6 pt-10 pb-8 text-center overflow-hidden">
           <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
             {confetti.map((c) => (
@@ -140,7 +144,7 @@ export default function ShareModal({ onClose, celebration = false }: ShareModalP
           </p>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-5 sm:p-6 space-y-4 pb-safe">
           {canNativeShare && (
             <button
               onClick={handleNativeShare}

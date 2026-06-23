@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Mail, X } from "lucide-react";
+import { Loader2, Mail, X, ExternalLink } from "lucide-react";
 import { isValidEmail, normalizeEmail } from "../utils/email";
 
 interface EmailManagerProps {
@@ -36,50 +36,54 @@ export default function EmailManager({
   if (!companyName) return null;
 
   return (
-    <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 mt-4">
-      <div className="text-sm font-medium text-slate-700 mb-3 leading-relaxed">
-        Revise el email proporcionado de que corresponda y esté disponible. Si
-        verifica uno nuevo, añádalo eliminando el existente.
-      </div>
+    <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mt-2">
+      <p className="text-sm font-medium text-slate-700 mb-3 leading-relaxed">
+        Verifique que el email es correcto y corresponde a la entidad.{" "}
+        <span className="font-normal text-slate-500">Si conoce uno más actualizado, añádalo y elimine el anterior.</span>
+      </p>
 
       {isSearching && emails.length === 0 ? (
-        <div className="text-sm text-slate-500 flex items-center gap-2">
-          <Loader2 className="animate-spin h-4 w-4" /> Buscando por internet...
+        <div className="text-sm text-slate-500 flex items-center gap-2 py-2">
+          <Loader2 className="animate-spin h-4 w-4 shrink-0" />
+          Buscando email oficial en internet…
         </div>
       ) : emails.length > 0 ? (
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="flex flex-col gap-2 mb-3">
           {emails.map((em) => (
-            <span
+            <div
               key={em}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 text-sm border border-indigo-100"
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white border border-indigo-100 shadow-sm"
             >
-              <Mail size={14} />
-              {em}
+              <Mail size={15} className="text-indigo-500 shrink-0" />
+              <span className="text-sm text-slate-800 font-medium flex-1 min-w-0 truncate">
+                {em}
+              </span>
               <a
                 href={`https://www.google.com/search?q=${encodeURIComponent(em)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-1 text-xs text-indigo-600 hover:text-indigo-800 underline"
+                className="shrink-0 text-indigo-500 hover:text-indigo-700 transition-colors p-1"
+                title="Verificar en Google"
+                aria-label={`Verificar ${em} en Google`}
               >
-                comprobar
+                <ExternalLink size={14} />
               </a>
               <button
                 onClick={() => removeEmail(em)}
-                className="ml-1 text-indigo-400 hover:text-red-500 transition-colors"
+                className="shrink-0 text-slate-400 hover:text-red-500 transition-colors p-1"
                 title="Eliminar email"
+                aria-label={`Eliminar ${em}`}
               >
                 <X size={14} />
               </button>
-            </span>
+            </div>
           ))}
         </div>
       ) : (
         <div className="mb-3">
-          <div className="text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded-md p-3 flex items-start justify-between gap-3">
-            <span>
-              No se han podido encontrar resultados automáticos para{" "}
-              {companyName}. Puede usar la búsqueda en Google y copiar el correo
-              correspondiente.
+          <div className="text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded-lg p-3 flex flex-col sm:flex-row sm:items-start gap-3">
+            <span className="leading-relaxed">
+              No encontramos email oficial para <strong>{companyName}</strong>. Búscalo en Google y añádelo abajo.
             </span>
             <a
               href={`https://www.google.com/search?q=${encodeURIComponent(
@@ -87,31 +91,35 @@ export default function EmailManager({
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 inline-flex items-center gap-1 bg-white hover:bg-orange-100 text-orange-800 font-medium px-3 py-1.5 rounded-md transition-colors border border-orange-300"
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 bg-white hover:bg-orange-100 text-orange-800 font-medium px-3 py-2 rounded-lg transition-colors border border-orange-300 text-sm"
             >
-              Comprobar en Google
+              <ExternalLink size={14} />
+              Buscar en Google
             </a>
           </div>
         </div>
       )}
 
-      <div className="flex gap-2 mt-2">
+      <div className="flex gap-2 mt-3">
         <input
           type="email"
-          placeholder="Añadir un correo manualmente..."
+          placeholder="correo@empresa.es"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
+          inputMode="email"
+          autoComplete="off"
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
               if (addEmail(inputValue)) setInputValue("");
             }
           }}
-          className="flex-1 bg-white border border-slate-200 text-slate-900 rounded-lg px-3 py-2 text-sm placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+          className="flex-1 min-w-0 bg-white border border-slate-200 text-slate-900 rounded-lg px-3 py-2.5 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+          style={{ fontSize: "16px" }}
         />
         <button
           type="button"
-          className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors border border-slate-200"
+          className="shrink-0 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium px-4 py-2.5 rounded-lg transition-colors border border-slate-200 text-sm"
           onClick={() => {
             if (addEmail(inputValue)) setInputValue("");
           }}

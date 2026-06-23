@@ -23,18 +23,20 @@ export default function CompanySelector({
 }: CompanySelectorProps) {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold flex items-center gap-2">
+      <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
         Paso 1: Entidad de destino
       </h2>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <label className="block text-sm font-medium text-slate-700">
           Seleccionar Empresa
         </label>
+        {/* font-size >= 16px en todos los select para evitar el auto-zoom de iOS Safari */}
         <select
           value={company}
           onChange={(e) => onChangeCompany(e.target.value)}
-          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-base focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none cursor-pointer"
+          style={{ fontSize: "16px" }}
         >
           <option value="" disabled>
             Seleccione una empresa
@@ -48,7 +50,7 @@ export default function CompanySelector({
       </div>
 
       {company === "Otro (especificar)" && (
-        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
           <label className="block text-sm font-medium text-slate-700">
             Nombre de la Empresa
           </label>
@@ -60,7 +62,9 @@ export default function CompanySelector({
               onChange={(e) => onChangeCustomCompany(e.target.value)}
               onBlur={onBlurCustom}
               onKeyDown={(e) => e.key === "Enter" && onEnterCustom()}
-              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+              autoComplete="organization"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 text-base placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+              style={{ fontSize: "16px" }}
             />
             {isSearching && (
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -68,10 +72,9 @@ export default function CompanySelector({
               </div>
             )}
           </div>
-          <p className="text-xs text-slate-500 flex items-start gap-1.5 mt-2">
+          <p className="text-xs text-slate-500 flex items-start gap-1.5">
             <Info size={14} className="shrink-0 mt-0.5" />
-            Al salir del campo buscaremos los emails de protección de datos
-            asignados a esta entidad en internet.
+            Al salir del campo buscaremos los emails de protección de datos en internet.
           </p>
         </div>
       )}
